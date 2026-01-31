@@ -1,6 +1,29 @@
 import sql from "@/lib/db"
+import { cookies } from "next/headers"
+
+async function checkAttendanceAccess() {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("admin_session")?.value
+
+    if (!sessionToken) return false
+
+    const adminId = parseInt(sessionToken)
+    if (isNaN(adminId)) return false
+
+    const result = await sql("SELECT role FROM admins WHERE id = $1", [adminId])
+    return result.length > 0 && ['superadmin', 'fine_manager', 'receipt_manager'].includes(result[0].role)
+  } catch (error) {
+    console.error("Error checking attendance access:", error)
+    return false
+  }
+}
 
 export async function GET(request: Request) {
+  if (!(await checkAttendanceAccess())) {
+    return Response.json({ message: "Unauthorized" }, { status: 403 })
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("eventId")
@@ -74,6 +97,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!(await checkAttendanceAccess())) {
+    return Response.json({ message: "Unauthorized" }, { status: 403 })
+  }
+
   try {
     const body = await request.json()
     

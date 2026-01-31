@@ -29,6 +29,9 @@ interface DashboardData {
   finesByCourse: Array<{ name: string; value: number }>
   monthlyAttendance: Array<{ month: string; present: number; am: number; pm: number }>
   studentStats: Array<{ name: string; value: number; color: string }>
+  loginLogs: Array<{ timestamp: string; username: string; full_name: string; role: string; activity_type: string }>
+  loginStatsByRole: Array<{ role: string; login_count: number }>
+  currentUserRole: string
 }
 
 interface DashboardChartsProps {
@@ -275,5 +278,116 @@ export function StudentComparisonChart({ data }: DashboardChartsProps) {
         </ResponsiveContainer>
       </CardContent>
     </Card>
+  )
+}
+
+export function LoginLogsChart({ data }: DashboardChartsProps) {
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'superadmin': return '#ef4444' // red
+      case 'student_registrar': return '#3b82f6' // blue
+      case 'fine_manager': return '#10b981' // green
+      case 'receipt_manager': return '#f59e0b' // yellow
+      default: return '#6b7280' // gray
+    }
+  }
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'superadmin': return 'Super Admin'
+      case 'student_registrar': return 'Registrar'
+      case 'fine_manager': return 'Fine Manager'
+      case 'receipt_manager': return 'Receipt Manager'
+      default: return role
+    }
+  }
+
+  const getActivityDescription = () => {
+    if (data.currentUserRole === 'superadmin') {
+      return 'Last 50 login/logout events across all roles in the past 30 days'
+    } else {
+      return `Last 50 login/logout events for ${getRoleLabel(data.currentUserRole)} role in the past 30 days`
+    }
+  }
+
+  const getStatsDescription = () => {
+    if (data.currentUserRole === 'superadmin') {
+      return 'Number of logins in the last 30 days by role'
+    } else {
+      return `Number of logins in the last 30 days for ${getRoleLabel(data.currentUserRole)} role`
+    }
+  }
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      {/* Login Statistics by Role */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Login Statistics by Role</CardTitle>
+          <CardDescription>{getStatsDescription()}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data.loginStatsByRole}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="role" tickFormatter={getRoleLabel} />
+              <YAxis />
+              <Tooltip
+                labelFormatter={(label) => `Role: ${getRoleLabel(label)}`}
+                formatter={(value: number) => [value, 'Logins']}
+              />
+              <Bar dataKey="login_count" fill="hsl(var(--color-chart-1))" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Recent Login/Logout Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Login/Logout Activity</CardTitle>
+          <CardDescription>{getActivityDescription()}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 max-h-80 overflow-y-auto">
+            {data.loginLogs.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">No login/logout activity in the last 30 days</p>
+            ) : (
+              data.loginLogs.map((log, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: getRoleColor(log.role) }}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <p className="font-medium text-sm">{log.full_name || log.username}</p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          log.activity_type === 'login'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {log.activity_type === 'login' ? 'Login' : 'Logout'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{getRoleLabel(log.role)}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(log.timestamp).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(log.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

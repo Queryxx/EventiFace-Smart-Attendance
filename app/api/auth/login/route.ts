@@ -34,6 +34,14 @@ export async function POST(request: Request) {
       path: "/",
     })
 
+    // Log the login
+    try {
+      await sql("INSERT INTO login_logs (admin_id) VALUES ($1)", [user.id])
+    } catch (logError) {
+      console.error("Failed to log login:", logError)
+      // Don't fail the login if logging fails
+    }
+
     return Response.json({ message: "Login successful", success: true }, { status: 200 })
   } catch (error) {
     console.error("Login error:", error)

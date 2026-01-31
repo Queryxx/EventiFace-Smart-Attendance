@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Footer } from "@/components/footer"
 import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
@@ -18,6 +19,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [fullName, setFullName] = useState("")
+  const [role, setRole] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
@@ -40,7 +42,7 @@ export default function RegisterPage() {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, full_name: fullName }),
+        body: JSON.stringify({ username, email, password, full_name: fullName, role }),
       })
 
       if (!response.ok) {
@@ -89,6 +91,20 @@ export default function RegisterPage() {
                   required
                   className="h-10 border-slate-200 focus:border-slate-400 focus:ring-0"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Role</label>
+                <Select value={role} onValueChange={setRole} required>
+                  <SelectTrigger className="h-10 border-slate-200 focus:border-slate-400 focus:ring-0">
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="superadmin">Super Admin</SelectItem>
+                    <SelectItem value="fine_manager">Fine Manager</SelectItem>
+                    <SelectItem value="receipt_manager">Receipt Manager</SelectItem>
+                    <SelectItem value="student_registrar">Student Registrar</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Username</label>

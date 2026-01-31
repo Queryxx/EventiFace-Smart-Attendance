@@ -1,6 +1,34 @@
 import sql from "@/lib/db"
+import { cookies } from "next/headers"
+
+async function checkRegistrarAccess() {
+  const cookieStore = await cookies()
+  const sessionId = cookieStore.get("session_id")?.value
+
+  if (!sessionId) {
+    return false
+  }
+
+  const session = await sql("SELECT user_id FROM sessions WHERE id = $1 AND expires_at > NOW()", [sessionId])
+
+  if (session.length === 0) {
+    return false
+  }
+
+  const user = await sql("SELECT role FROM admins WHERE id = $1", [session[0].user_id])
+
+  if (user.length === 0) {
+    return false
+  }
+
+  return user[0].role === "superadmin" || user[0].role === "student_registrar"
+}
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
+  if (!(await checkRegistrarAccess())) {
+    return Response.json({ message: "Unauthorized" }, { status: 403 })
+  }
+
   try {
     const { student_number, first_name, last_name, year_level, course_id, section_id, face_encoding, photo } =
       await request.json()
@@ -37,6 +65,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  if (!(await checkRegistrarAccess())) {
+    return Response.json({ message: "Unauthorized" }, { status: 403 })
+  }
+
   try {
     await sql("UPDATE students SET is_active = false WHERE id = $1", [params.id])
     return Response.json({ message: "Student deleted" })

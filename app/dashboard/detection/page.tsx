@@ -13,6 +13,8 @@ export default function Detect() {
   const eventId = searchParams?.get("eventId")
   const [modelsLoaded, setModelsLoaded] = useState(false)
   const [status, setStatus] = useState("Open camera to start detection")
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
   const [currentStudent, setCurrentStudent] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [attendanceType, setAttendanceType] = useState("in")
@@ -38,6 +40,34 @@ export default function Detect() {
     message: "No active session",
   })
   const [timeValidationError, setTimeValidationError] = useState<string | null>(null)
+
+  useEffect(() => {
+    checkAuthorization()
+  }, [])
+
+  async function checkAuthorization() {
+    try {
+      const response = await fetch("/api/auth/me")
+      if (response.ok) {
+        const data = await response.json()
+        if (['superadmin', 'student_registrar'].includes(data.role)) {
+          setIsAuthorized(true)
+        } else {
+          router.push("/dashboard")
+          return
+        }
+      } else {
+        router.push("/login")
+        return
+      }
+    } catch (error) {
+      console.error("Error checking authorization:", error)
+      router.push("/login")
+      return
+    } finally {
+      setAuthLoading(false)
+    }
+  }
 
   useEffect(() => {
     const loadModels = async () => {
@@ -562,6 +592,18 @@ export default function Detect() {
     pendingAttendanceRef.current.clear()
     detectionTimersRef.current = {} // Clear detection timers
     setStatus("Camera stopped - click Open Camera to start again")
+  }
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthorized) {
+    return null // This won't render as user will be redirected
   }
 
   return (

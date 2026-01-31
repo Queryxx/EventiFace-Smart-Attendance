@@ -3,9 +3,9 @@ import sql from "@/lib/db"
 
 export async function POST(request: Request) {
   try {
-    const { username, email, password, full_name } = await request.json()
+    const { username, email, password, full_name, role } = await request.json()
 
-    if (!username || !email || !password || !full_name) {
+    if (!username || !email || !password || !full_name || !role) {
       return Response.json({ message: "Missing required fields" }, { status: 400 })
     }
 
@@ -19,6 +19,12 @@ export async function POST(request: Request) {
       return Response.json({ message: "Password must be at least 6 characters" }, { status: 400 })
     }
 
+    // Validate role
+    const validRoles = ['superadmin', 'fine_manager', 'receipt_manager', 'student_registrar']
+    if (!validRoles.includes(role)) {
+      return Response.json({ message: "Invalid role" }, { status: 400 })
+    }
+
     // Check if user already exists
     const existingUser = await sql("SELECT id FROM admins WHERE username = $1 OR email = $2", [username, email])
     if (existingUser.length > 0) {
@@ -27,7 +33,7 @@ export async function POST(request: Request) {
 
     const passwordHash = await hashPassword(password)
 
-    await sql("INSERT INTO admins (username, email, password_hash, full_name) VALUES ($1, $2, $3, $4)", [username, email, passwordHash, full_name])
+    await sql("INSERT INTO admins (username, email, password_hash, full_name, role) VALUES ($1, $2, $3, $4, $5)", [username, email, passwordHash, full_name, role])
 
     return Response.json({ message: "Registration successful" }, { status: 201 })
   } catch (error) {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -61,6 +62,37 @@ export default function AttendancePage() {
   const [filterEvent, setFilterEvent] = useState("all")
   const [filterCourse, setFilterCourse] = useState("all")
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    checkAuthorization()
+  }, [])
+
+  async function checkAuthorization() {
+    try {
+      const response = await fetch("/api/auth/me")
+      if (response.ok) {
+        const data = await response.json()
+        if (['superadmin', 'fine_manager', 'receipt_manager'].includes(data.role)) {
+          setIsAuthorized(true)
+        } else {
+          router.push("/dashboard")
+          return
+        }
+      } else {
+        router.push("/login")
+        return
+      }
+    } catch (error) {
+      console.error("Error checking authorization:", error)
+      router.push("/login")
+      return
+    } finally {
+      setAuthLoading(false)
+    }
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -450,6 +482,21 @@ export default function AttendancePage() {
       console.error('Error exporting to PDF:', error)
       alert('Error exporting to PDF. Please try again.')
     }
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="ml-64 flex-1 p-8 bg-background">
+          <div className="text-center py-8">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthorized) {
+    return null // This won't render as user will be redirected
   }
 
   return (

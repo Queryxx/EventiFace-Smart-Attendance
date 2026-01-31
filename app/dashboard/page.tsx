@@ -2,15 +2,87 @@ import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
 import sql from "@/lib/db"
 import { Sidebar } from "@/components/sidebar"
-import { DashboardCharts, AttendanceChart, AttendanceStatusChart, FinesChart, FinesByCourseChart, StudentComparisonChart } from "@/components/dashboard-charts"
+import { DashboardCharts, AttendanceChart, AttendanceStatusChart, FinesChart, FinesByCourseChart, StudentComparisonChart, LoginLogsChart } from "@/components/dashboard-charts"
 
-async function getDashboardData() {
+async function getDashboardData(sessionId: string) {
   try {
+    // Get current user's role
+    const currentUserQuery = await sql("SELECT role FROM admins WHERE id = $1", [sessionId])
+    const currentUserRole = currentUserQuery[0]?.role
+
+    if (!currentUserRole) {
+      throw new Error("Invalid session")
+    }
+
     const totalStudents = await sql("SELECT COUNT(*) as count FROM students")
     const totalCourses = await sql("SELECT COUNT(*) as count FROM courses")
     const totalEvents = await sql("SELECT COUNT(*) as count FROM events")
     const totalSections = await sql("SELECT COUNT(*) as count FROM sections")
     const totalAttendance = await sql("SELECT COUNT(*) as count FROM attendance")
+
+// Get recent login and logout logs based on role permissions
+    let activityLogsQuery = `
+      SELECT
+        ll.login_time as timestamp,
+        a.username,
+        a.full_name,
+        a.role,
+        'login' as activity_type
+      FROM login_logs ll
+      JOIN admins a ON ll.admin_id = a.id
+      WHERE ll.login_time >= NOW() - INTERVAL '30 days'
+    `
+    const activityLogsParams: any[] = []
+
+    // Filter activity logs based on current user's role
+    if (currentUserRole !== 'superadmin') {
+      activityLogsQuery += ` AND a.role = $1`
+      activityLogsParams.push(currentUserRole)
+    }
+
+    activityLogsQuery += `
+      UNION ALL
+      SELECT
+        lol.logout_time as timestamp,
+        a.username,
+        a.full_name,
+        a.role,
+        'logout' as activity_type
+      FROM logout_logs lol
+      JOIN admins a ON lol.admin_id = a.id
+      WHERE lol.logout_time >= NOW() - INTERVAL '30 days'
+    `
+
+    // Apply role filter to logout logs too
+    if (currentUserRole !== 'superadmin') {
+      activityLogsQuery += ` AND a.role = $2`
+      activityLogsParams.push(currentUserRole)
+    }
+
+    activityLogsQuery += ` ORDER BY timestamp DESC LIMIT 50`
+
+    const activityLogs = await sql(activityLogsQuery, activityLogsParams)
+
+    // Get login stats by role based on permissions
+    let loginStatsQuery = `
+      SELECT
+        a.role,
+        COUNT(*) as login_count
+      FROM login_logs ll
+      JOIN admins a ON ll.admin_id = a.id
+      WHERE ll.login_time >= NOW() - INTERVAL '30 days'
+    `
+    const loginStatsParams: any[] = []
+
+    // Filter login stats based on current user's role
+    if (currentUserRole !== 'superadmin') {
+      loginStatsQuery += ` AND a.role = $1`
+      loginStatsParams.push(currentUserRole)
+    }
+
+    loginStatsQuery += ` GROUP BY a.role ORDER BY login_count DESC`
+
+    const loginStatsByRole = await sql(loginStatsQuery, loginStatsParams)
 
     // Fetch all courses for fine calculation
     const coursesData = await sql("SELECT id, course_name FROM courses")
@@ -164,6 +236,9 @@ async function getDashboardData() {
       finesByCourse,
       monthlyAttendance,
       studentStats,
+      loginLogs: activityLogs,
+      loginStatsByRole,
+      currentUserRole,
     }
   } catch (error) {
     console.error("Error fetching dashboard data:", error)
@@ -179,6 +254,9 @@ async function getDashboardData() {
       finesByCourse: [],
       monthlyAttendance: [],
       studentStats: [],
+      loginLogs: [],
+      loginStatsByRole: [],
+      currentUserRole: 'superadmin', // fallback
     }
   }
 }
@@ -191,7 +269,7 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const data = await getDashboardData()
+  const data = await getDashboardData(session.value)
 
   return (
     <div className="flex">
@@ -216,6 +294,11 @@ export default async function DashboardPage() {
 
           <div className="grid gap-6 md:grid-cols-1">
             <FinesByCourseChart data={data} />
+          </div>
+
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-6">Login Activity</h2>
+            <LoginLogsChart data={data} />
           </div>
         </div>
       </div>

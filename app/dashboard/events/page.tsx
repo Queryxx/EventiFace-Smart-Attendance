@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { EventsTable } from "@/components/events-table"
 import { EventForm } from "@/components/event-form"
@@ -18,6 +19,37 @@ export default function EventsPage() {
   const [showForm, setShowForm] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    checkAuthorization()
+  }, [])
+
+  async function checkAuthorization() {
+    try {
+      const response = await fetch("/api/auth/me")
+      if (response.ok) {
+        const data = await response.json()
+        if (['superadmin', 'student_registrar'].includes(data.role)) {
+          setIsAuthorized(true)
+        } else {
+          router.push("/dashboard")
+          return
+        }
+      } else {
+        router.push("/login")
+        return
+      }
+    } catch (error) {
+      console.error("Error checking authorization:", error)
+      router.push("/login")
+      return
+    } finally {
+      setAuthLoading(false)
+    }
+  }
 
   function handleEdit(event: Event) {
     setSelectedEvent(event)
@@ -33,6 +65,21 @@ export default function EventsPage() {
   function handleCancel() {
     setShowForm(false)
     setSelectedEvent(null)
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="ml-64 flex-1 p-8 bg-background">
+          <div className="text-center py-8">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthorized) {
+    return null // This won't render as user will be redirected
   }
 
   return (

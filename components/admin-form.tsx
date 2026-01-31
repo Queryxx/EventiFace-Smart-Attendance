@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Eye, EyeOff } from "lucide-react"
 
 interface Admin {
@@ -15,10 +16,11 @@ interface Admin {
   full_name: string
   email?: string
   password?: string
+  role?: string
 }
 
 export function AdminForm({ admin, onSave, onCancel }: { admin?: Admin; onSave: () => void; onCancel: () => void }) {
-  const [formData, setFormData] = useState<Admin>(admin || { username: "", full_name: "", email: "", password: "" })
+  const [formData, setFormData] = useState<Admin>(admin || { username: "", full_name: "", email: "", password: "", role: "" })
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -46,6 +48,10 @@ export function AdminForm({ admin, onSave, onCancel }: { admin?: Admin; onSave: 
     }
     if (!formData.email?.trim()) {
       setError("Email is required")
+      return
+    }
+    if (!formData.role?.trim()) {
+      setError("Role is required")
       return
     }
 
@@ -85,6 +91,7 @@ export function AdminForm({ admin, onSave, onCancel }: { admin?: Admin; onSave: 
           full_name: formData.full_name.trim(),
           username: formData.username.trim(),
           email: formData.email.trim(),
+          role: formData.role?.trim(),
           password: formData.password?.trim(),
         }),
       })
@@ -146,6 +153,21 @@ export function AdminForm({ admin, onSave, onCancel }: { admin?: Admin; onSave: 
               placeholder="Enter email address"
               required
             />
+          </div>
+
+          <div>
+            <Label htmlFor="role">Role *</Label>
+            <Select value={formData.role || ""} onValueChange={(value) => setFormData({ ...formData, role: value })} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="superadmin">Super Admin</SelectItem>
+                <SelectItem value="fine_manager">Fine Manager</SelectItem>
+                <SelectItem value="receipt_manager">Receipt Manager</SelectItem>
+                <SelectItem value="student_registrar">Student Registrar</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {!formData.id && (

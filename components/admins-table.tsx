@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Edit2, Trash2, Plus } from "lucide-react"
+import { Edit2, Trash2 } from "lucide-react"
 
 interface Admin {
   id: string
   username: string
   full_name: string
+  email: string
+  role: string
 }
 
 export function AdminsTable({ onEdit, onDelete }: { onEdit: (admin: Admin) => void; onDelete: (id: string) => void }) {
@@ -54,16 +56,8 @@ export function AdminsTable({ onEdit, onDelete }: { onEdit: (admin: Admin) => vo
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle>Admin Users</CardTitle>
-            <CardDescription>Manage admin accounts</CardDescription>
-          </div>
-          <Button onClick={() => onEdit({} as Admin)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Admin
-          </Button>
-        </div>
+        <CardTitle>Admin Users</CardTitle>
+        <CardDescription>Manage admin accounts</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="mb-4">
@@ -85,6 +79,8 @@ export function AdminsTable({ onEdit, onDelete }: { onEdit: (admin: Admin) => vo
                 <TableRow>
                   <TableHead>Username</TableHead>
                   <TableHead>Full Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -93,6 +89,8 @@ export function AdminsTable({ onEdit, onDelete }: { onEdit: (admin: Admin) => vo
                   <TableRow key={admin.id}>
                     <TableCell className="font-medium">{admin.username}</TableCell>
                     <TableCell>{admin.full_name}</TableCell>
+                    <TableCell>{admin.email}</TableCell>
+                    <TableCell className="capitalize">{admin.role.replace('_', ' ')}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={() => onEdit(admin)} className="gap-2">
                         <Edit2 className="h-4 w-4" />

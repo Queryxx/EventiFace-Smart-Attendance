@@ -1,6 +1,34 @@
 import sql from "@/lib/db"
+import { cookies } from "next/headers"
+
+async function checkRegistrarAccess() {
+  const cookieStore = await cookies()
+  const sessionId = cookieStore.get("session_id")?.value
+
+  if (!sessionId) {
+    return false
+  }
+
+  const session = await sql("SELECT user_id FROM sessions WHERE id = $1 AND expires_at > NOW()", [sessionId])
+
+  if (session.length === 0) {
+    return false
+  }
+
+  const user = await sql("SELECT role FROM admins WHERE id = $1", [session[0].user_id])
+
+  if (user.length === 0) {
+    return false
+  }
+
+  return user[0].role === "superadmin" || user[0].role === "student_registrar"
+}
 
 export async function GET() {
+  if (!(await checkRegistrarAccess())) {
+    return Response.json({ message: "Unauthorized" }, { status: 403 })
+  }
+
   try {
     const events = await sql("SELECT * FROM events ORDER BY event_date DESC")
     return Response.json(events)
@@ -11,6 +39,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!(await checkRegistrarAccess())) {
+    return Response.json({ message: "Unauthorized" }, { status: 403 })
+  }
+
   try {
     const {
       event_name,

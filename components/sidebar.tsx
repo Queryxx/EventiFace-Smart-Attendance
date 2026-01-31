@@ -6,20 +6,10 @@ import { useEffect, useState } from "react"
 import { LogOut, LayoutGrid, Users, Calendar, BookOpen, Layers, CheckCircle, CreditCard, Settings, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
-  { name: "Students", href: "/dashboard/students", icon: Users },
-  { name: "Events", href: "/dashboard/events", icon: Calendar },
-  { name: "Courses", href: "/dashboard/courses", icon: BookOpen },
-  { name: "Sections", href: "/dashboard/sections", icon: Layers },
-  { name: "Attendance", href: "/dashboard/attendance", icon: CheckCircle },
-  { name: "Fines", href: "/dashboard/fines", icon: CreditCard },
-  { name: "Admin Users", href: "/dashboard/admins", icon: Settings },
-]
-
 export function Sidebar() {
   const pathname = usePathname()
   const [adminName, setAdminName] = useState<string | null>(null)
+  const [adminRole, setAdminRole] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchCurrentAdmin() {
@@ -28,18 +18,56 @@ export function Sidebar() {
         if (response.ok) {
           const data = await response.json()
           setAdminName(data.full_name || data.username)
+          setAdminRole(data.role)
         } else {
           console.error("Failed to fetch admin:", response.status)
           setAdminName("Admin")
+          setAdminRole(null)
         }
       } catch (error) {
         console.error("Error fetching admin info:", error)
         setAdminName("Admin")
+        setAdminRole(null)
       }
     }
 
     fetchCurrentAdmin()
   }, [])
+
+  // Define all possible navigation items
+  const allNavigation = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+    { name: "Students", href: "/dashboard/students", icon: Users },
+    { name: "Events", href: "/dashboard/events", icon: Calendar },
+    { name: "Courses", href: "/dashboard/courses", icon: BookOpen },
+    { name: "Sections", href: "/dashboard/sections", icon: Layers },
+    { name: "Attendance", href: "/dashboard/attendance", icon: CheckCircle },
+    { name: "Fines", href: "/dashboard/fines", icon: CreditCard },
+    { name: "Admin Users", href: "/dashboard/admins", icon: Settings },
+  ]
+
+  // Filter navigation based on role
+  const getFilteredNavigation = () => {
+    if (!adminRole) return []
+
+    switch (adminRole) {
+      case 'superadmin':
+        return allNavigation
+      case 'student_registrar':
+        return allNavigation.filter(item =>
+          ['Dashboard', 'Students', 'Events', 'Courses', 'Sections'].includes(item.name)
+        )
+      case 'fine_manager':
+      case 'receipt_manager':
+        return allNavigation.filter(item =>
+          ['Dashboard', 'Attendance', 'Fines'].includes(item.name)
+        )
+      default:
+        return [allNavigation[0]] // Just Dashboard for unknown roles
+    }
+  }
+
+  const navigation = getFilteredNavigation()
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" })
